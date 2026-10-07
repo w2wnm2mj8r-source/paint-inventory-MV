@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#182230"><title>Paint Inventory v2</title>
+<style>
+:root{--bg:#f3f5f7;--card:#fff;--text:#17202a;--muted:#667085;--line:#e2e6eb;--accent:#2563eb;--danger:#b42318;--warn:#b54708}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
+header{position:sticky;top:0;z-index:5;background:#f3f5f7ee;backdrop-filter:blur(14px);padding:16px 18px 10px}h1{margin:0;font-size:29px}.sub{color:var(--muted);font-size:13px;margin-top:3px}
+main{max-width:980px;margin:auto;padding:8px 18px 115px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.toolbar input{flex:1;min-width:190px}
+input,select,textarea,button{font:inherit}input,select,textarea{border:1px solid var(--line);border-radius:12px;padding:11px;background:var(--card);color:var(--text)}button{border:0;border-radius:12px;padding:11px 14px;font-weight:700}.primary{background:var(--accent);color:white}.secondary{background:#e9edf3}.danger{background:#fee4e2;color:var(--danger)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:10px 0 14px}.stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px}.stat b{font-size:21px;display:block}.stat span{font-size:11px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:13px;margin:9px 0}.top{display:flex;gap:12px;align-items:center}.swatch{width:54px;height:54px;border-radius:14px;border:1px solid #ccd2d9;flex:none}.info{flex:1;min-width:0}.name{font-weight:800;font-size:17px}.meta{color:var(--muted);font-size:12px;margin-top:3px}.qty{font-weight:800;text-align:right}.low{color:var(--warn);font-size:11px}.actions{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}.actions button{padding:8px 10px;font-size:12px}
+.empty{text-align:center;color:var(--muted);padding:45px 20px}.fab{position:fixed;right:20px;bottom:20px;border-radius:999px;padding:16px 20px;box-shadow:0 8px 28px #0003}
+dialog{border:0;border-radius:22px;padding:0;width:min(680px,94vw);max-height:92vh;box-shadow:0 22px 70px #0004}dialog::backdrop{background:#0007}.modal{padding:20px;overflow:auto}.modal h2{margin-top:0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.field{margin:8px 0}.field label{display:block;font-size:12px;font-weight:700;margin-bottom:4px}.actions-end{display:flex;justify-content:flex-end;gap:8px;margin-top:15px}
+.history{border-top:1px solid var(--line);margin-top:10px;padding-top:9px}.histrow{font-size:12px;padding:5px 0;color:var(--muted);display:flex;justify-content:space-between}
+.photo{width:100%;max-height:190px;object-fit:cover;border-radius:12px;margin-top:10px}.filterbar{display:flex;gap:8px;overflow:auto;padding-bottom:3px}.filterbar select{min-width:145px}
+@media(max-width:650px){.stats{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.top{align-items:flex-start}}
+</style></head>
+<body>
+<header><h1>Paint Inventory</h1><div class="sub">Personal inventory • stored on this device</div></header>
+<main>
+<div class="toolbar"><input id="search" placeholder="Search color, code, brand, room..."><button class="secondary" id="backup">Backup</button><button class="secondary" id="restoreBtn">Restore</button><input id="restore" type="file" accept=".json" hidden></div>
+<div class="filterbar"><select id="catFilter"><option value="">All categories</option><option>Paint</option><option>Primer</option><option>Stain</option><option>Specialty Item</option><option>Additive</option><option>Liquid</option><option>Other</option></select><select id="brandFilter"><option value="">All brands</option></select><select id="roomFilter"><option value="">All locations</option></select><select id="stockFilter"><option value="">All stock</option><option value="low">Low stock</option><option value="out">Out of stock</option></select></div>
+<div class="stats"><div class="stat"><b id="paintCount">0</b><span>Paint colors</span></div><div class="stat"><b id="specialCount">0</b><span>Other items</span></div><div class="stat"><b id="totalQty">0</b><span>Total units</span></div><div class="stat"><b id="lowCount">0</b><span>Low stock</span></div></div>
+<div id="list"></div></main>
+<button class="fab primary" id="addBtn">＋ Add Paint</button>
+
+<dialog id="dlg"><form class="modal" id="form">
+<h2 id="title">Add Inventory</h2>
+<div class="grid">
+<div class="field"><label>Color / Item Name</label><input id="name" required></div><div class="field"><label>Color Code</label><input id="code" placeholder="e.g. SW 6258"></div>
+<div class="field"><label>Brand</label><input id="brand" placeholder="Sherwin-Williams"></div><div class="field"><label>Category</label><select id="category"><option>Paint</option><option>Primer</option><option>Stain</option><option>Specialty Item</option><option>Additive</option><option>Liquid</option><option>Other</option></select></div>
+<div class="field"><label>Quantity</label><input id="qty" type="number" min="0" step=".01" value="1"></div><div class="field"><label>Unit</label><select id="unit"><option>gallon</option><option>quart</option><option>pint</option><option>liter</option><option>each</option></select></div>
+<div class="field"><label>Room / Location</label><input id="room" placeholder="Paint room"></div><div class="field"><label>Low-stock threshold</label><input id="threshold" type="number" min="0" step=".01" value="1"></div>
+<div class="field"><label>Color swatch</label><input id="swatch" type="color" value="#333333"></div><div class="field"><label>Photo</label><input id="photo" type="file" accept="image/*" capture="environment"></div>
+</div><div class="field"><label>Notes</label><textarea id="notes" rows="3"></textarea></div>
+<div id="preview"></div><div class="actions-end"><button type="button" class="secondary" id="cancel">Cancel</button><button class="primary">Save</button></div>
+</form></dialog>
+
+<dialog id="useDlg"><form class="modal" id="useForm"><h2>Use Inventory</h2><p id="useText"></p><div class="field"><label>Amount used</label><input id="useQty" type="number" min="0" step=".01" value=".5"></div><div class="field"><label>Reason / job (optional)</label><input id="useReason" placeholder="e.g. Kitchen cabinets"></div><div class="actions-end"><button type="button" class="secondary" id="useCancel">Cancel</button><button class="primary">Record Use</button></div></form></dialog>
+
+<dialog id="historyDlg"><div class="modal"><h2>Usage History</h2><div id="history"></div><div class="actions-end"><button class="secondary" onclick="historyDlg.close()">Close</button></div></div></dialog>
+
+<script>
+const KEY="paintInventory.v2", HIST="paintInventory.history.v2";
+let items=JSON.parse(localStorage.getItem(KEY)||"[]"), history=JSON.parse(localStorage.getItem(HIST)||"[]"), editId=null,useId=null,newPhoto=null;
+const $=id=>document.getElementById(id),dlg=$("dlg"),historyDlg=$("historyDlg"),useDlg=$("useDlg");
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+function persist(){localStorage.setItem(KEY,JSON.stringify(items));localStorage.setItem(HIST,JSON.stringify(history));render()}
+function options(sel,values,label){const old=$(sel).value;$(sel).innerHTML=`<option value="">${label}</option>`+values.map(v=>`<option>${esc(v)}</option>`).join("");if(values.includes(old))$(sel).value=old}
+function render(){
+ options("brandFilter",[...new Set(items.map(x=>x.brand).filter(Boolean))].sort(),"All brands");
+ options("roomFilter",[...new Set(items.map(x=>x.room).filter(Boolean))].sort(),"All locations");
+ const q=$("search").value.toLowerCase(),cat=$("catFilter").value,brand=$("brandFilter").value,room=$("roomFilter").value,stock=$("stockFilter").value;
+ const f=items.filter(x=>[x.name,x.code,x.brand,x.room,x.category,x.notes].join(" ").toLowerCase().includes(q)&&(!cat||x.category===cat)&&(!brand||x.brand===brand)&&(!room||x.room===room)&&(!stock||(stock==="low"?x.qty>0&&x.qty<=x.threshold:x.qty===0)));
+ $("paintCount").textContent=items.filter(x=>x.category==="Paint").length;$("specialCount").textContent=items.filter(x=>x.category!=="Paint").length;$("totalQty").textContent=items.reduce((a,x)=>a+(+x.qty||0),0).toFixed(2).replace(/\.00$/,"");$("lowCount").textContent=items.filter(x=>x.qty>0&&x.qty<=x.threshold).length;
+ $("list").innerHTML=f.length?f.map(x=>`<div class="card"><div class="top"><div class="swatch" style="background:${x.swatch||"#777"}"></div><div class="info"><div class="name">${esc(x.name)}</div><div class="meta">${esc(x.code||"")} ${x.brand?"• "+esc(x.brand):""}</div><div class="meta">${esc(x.category)} ${x.room?"• "+esc(x.room):""}</div></div><div class="qty">${x.qty} ${esc(x.unit)}${x.qty===0?'<div class="low">OUT</div>':x.qty<=x.threshold?'<div class="low">LOW</div>':""}</div></div>${x.photo?`<img class="photo" src="${x.photo}">`:""}<div class="actions"><button class="primary" onclick="openUse('${x.id}')">Use</button><button class="secondary" onclick="editItem('${x.id}')">Edit</button><button class="secondary" onclick="showHistory('${x.id}')">History</button><button class="danger" onclick="deleteItem('${x.id}')">Delete</button></div></div>`).join(""):'<div class="empty">No matching inventory.<br><br>Tap <b>＋ Add Paint</b> to add an item.</div>';
+}
+function reset(){["name","code","brand","room","notes"].forEach(id=>$(id).value="");$("qty").value=1;$("threshold").value=1;$("category").value="Paint";$("unit").value="gallon";$("swatch").value="#333333";$("photo").value="";$("preview").innerHTML="";editId=null;newPhoto=null;$("title").textContent="Add Inventory"}
+$("addBtn").onclick=()=>{reset();dlg.showModal()};$("cancel").onclick=()=>dlg.close();
+$("photo").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{newPhoto=r.result;$("preview").innerHTML=`<img class="photo" src="${newPhoto}">`};r.readAsDataURL(f)};
+$("form").onsubmit=e=>{e.preventDefault();const old=items.find(x=>x.id===editId),data={name:$("name").value.trim(),code:$("code").value.trim(),brand:$("brand").value.trim(),category:$("category").value,qty:+$("qty").value||0,unit:$("unit").value,room:$("room").value.trim(),threshold:+$("threshold").value||0,swatch:$("swatch").value,notes:$("notes").value.trim(),photo:newPhoto??old?.photo??""};if(!data.name)return;if(editId)Object.assign(old,data);else items.push({id:crypto.randomUUID(),...data});persist();dlg.close();reset()};
+function editItem(id){const x=items.find(i=>i.id===id);if(!x)return;editId=id;$("title").textContent="Edit Inventory";for(const k of ["name","code","brand","qty","room","threshold","notes"])$(k).value=x[k]??"";$("category").value=x.category;$("unit").value=x.unit;$("swatch").value=x.swatch||"#333333";newPhoto=null;$("preview").innerHTML=x.photo?`<img class="photo" src="${x.photo}">`:"";$("photo").value="";dlg.showModal()}
+function deleteItem(id){const x=items.find(i=>i.id===id);if(confirm(`Delete ${x.name}?`)){items=items.filter(i=>i.id!==id);persist()}}
+function openUse(id){useId=id;const x=items.find(i=>i.id===id);$("useText").textContent=`Current: ${x.qty} ${x.unit} of ${x.name}`;$("useQty").value=x.qty>0?Math.min(.5,x.qty):0;$("useReason").value="";useDlg.showModal()}
+$("useCancel").onclick=()=>useDlg.close();$("useForm").onsubmit=e=>{e.preventDefault();const x=items.find(i=>i.id===useId),n=+$("useQty").value;if(!x||!Number.isFinite(n)||n<=0||n>x.qty)return alert("Enter an amount up to the current quantity.");x.qty=+(x.qty-n).toFixed(3);history.unshift({id:crypto.randomUUID(),itemId:x.id,date:new Date().toISOString(),amount:n,unit:x.unit,reason:$("useReason").value.trim()});persist();useDlg.close()};
+function showHistory(id){const x=items.find(i=>i.id===id),h=history.filter(a=>a.itemId===id);$("history").innerHTML=`<b>${esc(x.name)}</b>`+(h.length?h.map(a=>`<div class="histrow"><span>${new Date(a.date).toLocaleString()}${a.reason?" • "+esc(a.reason):""}</span><span>−${a.amount} ${esc(a.unit)}</span></div>`).join(""):'<p class="sub">No usage recorded yet.</p>');historyDlg.showModal()}
+$("backup").onclick=()=>{const blob=new Blob([JSON.stringify({version:2,items,history},null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="paint-inventory-backup.json";a.click();URL.revokeObjectURL(a.href)};
+$("restoreBtn").onclick=()=>$("restore").click();$("restore").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.items))throw 0;if(confirm("Replace current inventory with this backup?")){items=d.items;history=Array.isArray(d.history)?d.history:[];persist()}}catch{alert("That backup file is not valid.")}};r.readAsText(f);e.target.value=""};
+["search","catFilter","brandFilter","roomFilter","stockFilter"].forEach(id=>$(id).oninput=render);render();
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script></body></html>

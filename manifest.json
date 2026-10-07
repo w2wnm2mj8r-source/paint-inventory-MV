@@ -1,0 +1,9 @@
+{
+  "name": "Paint Inventory",
+  "short_name": "Paint Inventory",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f5f7",
+  "theme_color": "#182230",
+  "icons": []
+}
